@@ -182,3 +182,28 @@ AUTHENTICATION_BACKENDS = [
 
 # Vote encryption key
 VOTE_ENCRYPTION_KEY = os.getenv('VOTE_ENCRYPTION_KEY')
+
+
+
+if os.getenv('CREATE_SUPERUSER', 'False').lower() == 'true':
+    import django
+    django.setup()
+    from django.contrib.auth import get_user_model
+
+    User = get_user_model()
+    admin_phone = os.getenv('ADMIN_PHONE')
+    admin_password = os.getenv('ADMIN_PASSWORD')
+
+    if not admin_phone or not admin_password:
+        print("⚠️ ADMIN_PHONE or ADMIN_PASSWORD not set — skipping superuser creation.")
+    else:
+        if not User.objects.filter(phone_number=admin_phone).exists():
+            User.objects.create_superuser(
+                name='Admin User',
+                phone_number=admin_phone,
+                password=admin_password,
+                voter_id='ADMIN0001'
+            )
+            print(f"✅ Superuser created: {admin_phone}")
+        else:
+            print(f"ℹ️ Superuser already exists: {admin_phone}")
