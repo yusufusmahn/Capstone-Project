@@ -190,7 +190,8 @@ if os.getenv('CREATE_SUPERUSER', 'False').lower() == 'true':
     import django
     django.setup()
     from django.contrib.auth import get_user_model
-    from voting.models import VoterProfile  # import where your profile is
+    from authentication.models import Voter
+
 
     User = get_user_model()
     admin_phone = os.getenv('ADMIN_PHONE')
