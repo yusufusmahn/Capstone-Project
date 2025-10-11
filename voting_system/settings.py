@@ -185,10 +185,12 @@ VOTE_ENCRYPTION_KEY = os.getenv('VOTE_ENCRYPTION_KEY')
 
 
 
+# Auto-create superuser on deploy (only if not existing)
 if os.getenv('CREATE_SUPERUSER', 'False').lower() == 'true':
     import django
     django.setup()
     from django.contrib.auth import get_user_model
+    from voting.models import VoterProfile  # import where your profile is
 
     User = get_user_model()
     admin_phone = os.getenv('ADMIN_PHONE')
@@ -198,12 +200,23 @@ if os.getenv('CREATE_SUPERUSER', 'False').lower() == 'true':
         print("⚠️ ADMIN_PHONE or ADMIN_PASSWORD not set — skipping superuser creation.")
     else:
         if not User.objects.filter(phone_number=admin_phone).exists():
-            User.objects.create_superuser(
+            admin_user = User.objects.create_superuser(
                 name='Admin User',
                 phone_number=admin_phone,
                 password=admin_password,
-                voter_id='ADMIN0001'
             )
             print(f"✅ Superuser created: {admin_phone}")
+
+            # Optional: create voter profile for consistency
+            VoterProfile.objects.get_or_create(
+                user=admin_user,
+                defaults={
+                    'voter_id': 'ADMIN0001',
+                    'registration_verified': True,
+                    'can_vote': False,
+                },
+            )
+            print("🧾 Linked VoterProfile created for superuser.")
         else:
             print(f"ℹ️ Superuser already exists: {admin_phone}")
+
