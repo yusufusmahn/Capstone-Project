@@ -2,13 +2,15 @@ from rest_framework import serializers
 from django.contrib.auth import authenticate
 from django.core.exceptions import ValidationError as DjangoValidationError
 from datetime import date
-from .models import User, Voter, Admin, InecOfficial, validate_age, validate_voter_id
+from .models import User, Voter, Admin, InecOfficial, validate_age, validate_voter_id, Role
+import uuid
+from django.db import transaction
 
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ['id', 'user_id', 'name', 'phone_number', 'email', 'dob', 'role', 'status', 'created_at']
+        fields = ['id', 'user_id', 'name', 'phone_number', 'email', 'dob', 'role', 'status', 'is_staff', 'is_superuser', 'created_at']
         read_only_fields = ['id', 'user_id', 'created_at']
 
 
@@ -35,6 +37,79 @@ class InecOfficialSerializer(serializers.ModelSerializer):
     class Meta:
         model = InecOfficial
         fields = ['user', 'official_id']
+
+
+class AdminCreateSerializer(serializers.Serializer):
+    name = serializers.CharField(max_length=255)
+    phone_number = serializers.CharField()
+    password = serializers.CharField(write_only=True, min_length=8)
+    dob = serializers.DateField(required=False, allow_null=True)
+
+    def validate_phone_number(self, value):
+        phone_clean = str(value).replace(' ', '').replace('-', '')
+        if User._default_manager.filter(phone_number=phone_clean).exists():
+            raise serializers.ValidationError('A user with this phone number already exists.')
+        return phone_clean
+
+    def create(self, validated_data):
+        # Create user and admin profile atomically
+        with transaction.atomic():
+            phone = validated_data.pop('phone_number')
+            password = validated_data.pop('password')
+            name = validated_data.pop('name')
+            dob = validated_data.pop('dob', None)
+
+            user = User._default_manager.create_user(
+                phone_number=phone,
+                name=name,
+                password=password,
+                dob=dob,
+            )
+            # Mark as staff for admin access where relevant
+            user.is_staff = True
+            user.role = Role.ADMIN
+            user.save()
+
+            admin_id = f"ADM-{uuid.uuid4().hex[:10].upper()}"
+            Admin._default_manager.create(user=user, admin_id=admin_id)
+
+            return user
+
+
+class InecOfficialCreateSerializer(serializers.Serializer):
+    name = serializers.CharField(max_length=255)
+    phone_number = serializers.CharField()
+    password = serializers.CharField(write_only=True, min_length=8)
+    dob = serializers.DateField(required=False, allow_null=True)
+
+    def validate_phone_number(self, value):
+        phone_clean = str(value).replace(' ', '').replace('-', '')
+        if User._default_manager.filter(phone_number=phone_clean).exists():
+            raise serializers.ValidationError('A user with this phone number already exists.')
+        return phone_clean
+
+    def create(self, validated_data):
+        with transaction.atomic():
+            phone = validated_data.pop('phone_number')
+            password = validated_data.pop('password')
+            name = validated_data.pop('name')
+            dob = validated_data.pop('dob', None)
+
+            user = User._default_manager.create_user(
+                phone_number=phone,
+                name=name,
+                password=password,
+                dob=dob,
+            )
+            # Give INEC officials staff privileges where appropriate
+            user.is_staff = True
+            user.role = Role.INEC_OFFICIAL
+            user.save()
+
+            official_id = f"INEC-{uuid.uuid4().hex[:10].upper()}"
+            InecOfficial._default_manager.create(user=user, official_id=official_id)
+
+            return user
 
 
 class LoginSerializer(serializers.Serializer):

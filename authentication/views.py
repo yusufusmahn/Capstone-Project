@@ -13,6 +13,7 @@ from .serializers import (
     LoginSerializer, RegistrationSerializer, PasswordChangeSerializer,
     PasswordResetRequestSerializer, PasswordResetSerializer
 )
+from .serializers import AdminCreateSerializer, InecOfficialCreateSerializer
 
 
 class RegisterView(APIView):
@@ -283,3 +284,42 @@ def verify_voter_registration(request, voter_id):
         return Response({
             'error': 'Voter not found'
         }, status=status.HTTP_404_NOT_FOUND)
+
+
+
+@api_view(['POST'])
+@permission_classes([permissions.IsAuthenticated])
+def create_admin(request):
+    """Only superusers can create admin users"""
+    user = request.user
+    if not user.is_superuser:
+        return Response({'error': 'Superuser access required'}, status=status.HTTP_403_FORBIDDEN)
+
+    serializer = AdminCreateSerializer(data=request.data)
+    if serializer.is_valid():
+        try:
+            new_user = serializer.save()
+            return Response({'user': UserSerializer(new_user).data, 'message': 'Admin created successfully'}, status=status.HTTP_201_CREATED)
+        except Exception as e:
+            return Response({'error': 'Failed to create admin', 'details': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    else:
+        return Response({'error': 'Invalid data', 'details': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['POST'])
+@permission_classes([permissions.IsAuthenticated])
+def create_inec_official(request):
+    """Superusers and Admins can create INEC Officials. Admins cannot create Admins."""
+    user = request.user
+    if not (user.is_superuser or hasattr(user, 'admin')):
+        return Response({'error': 'Superuser or Admin access required'}, status=status.HTTP_403_FORBIDDEN)
+
+    serializer = InecOfficialCreateSerializer(data=request.data)
+    if serializer.is_valid():
+        try:
+            new_user = serializer.save()
+            return Response({'user': UserSerializer(new_user).data, 'message': 'INEC Official created successfully'}, status=status.HTTP_201_CREATED)
+        except Exception as e:
+            return Response({'error': 'Failed to create INEC Official', 'details': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    else:
+        return Response({'error': 'Invalid data', 'details': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
