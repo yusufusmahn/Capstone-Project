@@ -209,7 +209,7 @@ if os.getenv('CREATE_SUPERUSER', 'False').lower() == 'true':
             print(f"✅ Superuser created: {admin_phone}")
 
             # Optional: create voter profile for consistency
-            VoterProfile.objects.get_or_create(
+            Voter.objects.get_or_create(
                 user=admin_user,
                 defaults={
                     'voter_id': 'ADMIN0001',
