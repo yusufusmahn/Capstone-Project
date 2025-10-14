@@ -138,7 +138,8 @@ class Voter(models.Model):
     )
     voters_card_id = models.CharField(max_length=20, unique=True, null=True, blank=True)  # VIN - Voter Identification Number
     registration_verified = models.BooleanField(default=False)
-    can_vote = models.BooleanField(default=True)
+    # Default to False so voters are not eligible to vote until approved
+    can_vote = models.BooleanField(default=False)
     
     def clean(self):
         super().clean()
