@@ -273,6 +273,7 @@ def verify_voter_registration(request, voter_id):
         
         # Simulate verification without external database
         voter.registration_verified = True
+        voter.can_vote = True
         voter.save()
         
         return Response({
@@ -284,6 +285,28 @@ def verify_voter_registration(request, voter_id):
         return Response({
             'error': 'Voter not found'
         }, status=status.HTTP_404_NOT_FOUND)
+
+
+
+@api_view(['POST'])
+@permission_classes([permissions.IsAuthenticated])
+def cancel_voter_registration(request, voter_id):
+    """Cancel/Reject a voter registration - only Admins/INEC Officials/Superusers"""
+    user = request.user
+    if not (user.is_superuser or hasattr(user, 'admin') or hasattr(user, 'inecofficial')):
+        return Response({'error': 'INEC Official or Admin access required'}, status=status.HTTP_403_FORBIDDEN)
+
+    try:
+        voter = Voter._default_manager.get(voter_id=voter_id)
+        voter.registration_verified = False
+        voter.can_vote = False
+        voter.save()
+
+        return Response({'message': f'Voter {voter.voter_id} registration cancelled', 'voter': VoterSerializer(voter).data}, status=status.HTTP_200_OK)
+    except Voter._default_manager.model.DoesNotExist:
+        return Response({'error': 'Voter not found'}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        return Response({'error': 'Failed to cancel registration', 'details': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 
