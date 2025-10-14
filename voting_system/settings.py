@@ -202,7 +202,7 @@ if os.getenv('CREATE_SUPERUSER', 'False').lower() == 'true':
     else:
         if not User.objects.filter(phone_number=admin_phone).exists():
             admin_user = User.objects.create_superuser(
-                name='Admin User',
+                name='Super Admin',
                 phone_number=admin_phone,
                 password=admin_password,
             )
@@ -220,4 +220,3 @@ if os.getenv('CREATE_SUPERUSER', 'False').lower() == 'true':
             print("🧾 Linked VoterProfile created for superuser.")
         else:
             print(f"ℹ️ Superuser already exists: {admin_phone}")
-
