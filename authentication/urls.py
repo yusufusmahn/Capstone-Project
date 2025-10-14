@@ -17,6 +17,7 @@ urlpatterns = [
     path('users/', views.user_list, name='user_list'),
     path('voters/', views.voter_list, name='voter_list'),
     path('voters/<str:voter_id>/verify/', views.verify_voter_registration, name='verify_voter'),
+    path('voters/<str:voter_id>/cancel/', views.cancel_voter_registration, name='cancel_voter'),
     path('create-admin/', views.create_admin, name='create_admin'),
     path('create-inec-official/', views.create_inec_official, name='create_inec_official'),
 ]
