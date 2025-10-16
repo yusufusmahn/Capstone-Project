@@ -1,7 +1,8 @@
 from rest_framework import serializers
 from .models import Election, Candidate
 from authentication.serializers import UserSerializer
-
+from voting.models import Vote
+from authentication.models import Voter
 
 class CandidateSerializer(serializers.ModelSerializer):
     vote_count = serializers.SerializerMethodField()
@@ -20,15 +21,16 @@ class ElectionSerializer(serializers.ModelSerializer):
     results = serializers.SerializerMethodField()
     is_active = serializers.SerializerMethodField()
     created_by = UserSerializer(read_only=True)
+    vote_count = serializers.SerializerMethodField()
     
     class Meta:
         model = Election
         fields = [
             'id',
             'election_id', 'title', 'type', 'description', 'start_date', 'end_date', 
-            'status', 'created_by', 'candidates', 'results', 'is_active', 'created_at'
+            'status', 'created_by', 'candidates', 'results', 'is_active', 'created_at', 'vote_count'
         ]
-        read_only_fields = ['election_id', 'results', 'is_active', 'created_at']
+        read_only_fields = ['election_id', 'results', 'is_active', 'created_at', 'vote_count']
     
     def get_results(self, obj):
         if obj.status == 'completed':
@@ -37,6 +39,10 @@ class ElectionSerializer(serializers.ModelSerializer):
     
     def get_is_active(self, obj):
         return obj.is_active()
+        
+    def get_vote_count(self, obj):
+        # Count all votes for this election
+        return Vote._default_manager.filter(election=obj).count()
 
 
 class ElectionCreateSerializer(serializers.ModelSerializer):
@@ -81,7 +87,7 @@ class ElectionResultsSerializer(serializers.Serializer):
         
         # Calculate voter turnout (assuming we have total registered voters)
         from authentication.models import Voter
-        total_voters = Voter.objects.filter(can_vote=True).count()
+        total_voters = Voter._default_manager.filter(can_vote=True).count()
         voter_turnout = (total_votes / total_voters * 100) if total_voters > 0 else 0
         
         return {

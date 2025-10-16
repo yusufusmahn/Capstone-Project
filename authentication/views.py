@@ -1,7 +1,8 @@
-from rest_framework import status, permissions
+from rest_framework import status, permissions, generics, filters
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework.pagination import PageNumberPagination
 from rest_framework.authtoken.models import Token
 from django.contrib.auth import authenticate, login, logout
 from django.utils import timezone
@@ -11,7 +12,6 @@ from .models import User, Voter, Admin, InecOfficial
 from .serializers import (
     UserSerializer, VoterSerializer, AdminSerializer, InecOfficialSerializer,
     LoginSerializer, RegistrationSerializer, PasswordChangeSerializer,
-    PasswordResetRequestSerializer, PasswordResetSerializer
 )
 from .serializers import AdminCreateSerializer, InecOfficialCreateSerializer
 
@@ -185,8 +185,7 @@ class PasswordChangeView(APIView):
                 'error': 'Password change failed',
                 'details': serializer.errors
             }, status=status.HTTP_400_BAD_REQUEST)
-
-
+"""
 class PasswordResetRequestView(APIView):
     permission_classes = [permissions.AllowAny]
     
@@ -226,6 +225,7 @@ class PasswordResetView(APIView):
                 'error': 'Password reset failed',
                 'details': serializer.errors
             }, status=status.HTTP_400_BAD_REQUEST)
+"""
 
 
 @api_view(['GET'])
@@ -245,7 +245,7 @@ def user_list(request):
 @api_view(['GET'])
 @permission_classes([permissions.IsAuthenticated])
 def voter_list(request):
-    """List all voters (Admin/INEC Official only)"""
+    """Deprecated: use VoterListView for paginated/filterable list."""
     user = request.user
     if not (user.is_superuser or hasattr(user, 'admin') or hasattr(user, 'inecofficial')):
         return Response({
@@ -254,6 +254,71 @@ def voter_list(request):
     
     voters = Voter._default_manager.all()
     serializer = VoterSerializer(voters, many=True)
+    return Response(serializer.data)
+
+
+class StandardResultsSetPagination(PageNumberPagination):
+    page_size = 25
+    page_size_query_param = 'page_size'
+    max_page_size = 200
+
+
+class VoterListView(generics.ListAPIView):
+    """Paginated, searchable list of voters for Admin/INEC officials."""
+    serializer_class = VoterSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    pagination_class = StandardResultsSetPagination
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ['user__name', 'voter_id', 'voters_card_id', 'user__phone_number']
+    ordering_fields = ['user__name', 'voter_id']
+
+    def get_queryset(self):
+        user = self.request.user
+        if not (user.is_superuser or hasattr(user, 'admin') or hasattr(user, 'inecofficial')):
+            return Voter._default_manager.none()
+
+        qs = Voter._default_manager.select_related('user').all()
+
+        # registration_verified filter (expects true/false)
+        rv = self.request.query_params.get('registration_verified')
+        if rv is not None:
+            if rv.lower() in ['true', '1', 'yes']:
+                qs = qs.filter(registration_verified=True)
+            elif rv.lower() in ['false', '0', 'no']:
+                qs = qs.filter(registration_verified=False)
+
+        return qs
+
+
+class VoterDetailView(generics.RetrieveAPIView):
+    """Retrieve a single voter by voter_id (Admin/INEC only)."""
+    serializer_class = VoterSerializer
+    lookup_field = 'voter_id'
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        if not (user.is_superuser or hasattr(user, 'admin') or hasattr(user, 'inecofficial')):
+            return Voter._default_manager.none()
+        return Voter._default_manager.select_related('user').all()
+
+
+@api_view(['GET'])
+@permission_classes([permissions.IsAuthenticated])
+def voter_history(request, voter_id):
+    """Return voting history for a given voter (Admin/INEC only)."""
+    user = request.user
+    if not (user.is_superuser or hasattr(user, 'admin') or hasattr(user, 'inecofficial')):
+        return Response({'error': 'Admin or INEC Official access required'}, status=status.HTTP_403_FORBIDDEN)
+
+    try:
+        voter = Voter._default_manager.get(voter_id=voter_id)
+    except Voter._default_manager.model.DoesNotExist:
+        return Response({'error': 'Voter not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    from voting.serializers import VoteSerializer
+    votes = voter.votes.all().order_by('-timestamp')
+    serializer = VoteSerializer(votes, many=True)
     return Response(serializer.data)
 
 

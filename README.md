@@ -39,29 +39,85 @@ python manage.py check_election_status
 python manage.py test
 ```
 
+```markdown
+# Backend — Digital Voting System (Django)
+
+Backend code lives in `backend/`. Run Django management commands from that folder (where `manage.py` resides).
+
+## Quick start (Windows PowerShell)
+
+```powershell
+cd backend
+
+# (first-run) create + activate a virtual environment
+python -m venv venv
+.\venv\Scripts\Activate.ps1
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Apply migrations
+python manage.py makemigrations
+python manage.py migrate
+
+# (Optional) create a superuser
+python manage.py createsuperuser
+
+# Start development server
+python manage.py runserver 127.0.0.1:8000
+```
+
+## Useful management commands
+
+- Run checks:
+
+```powershell
+python manage.py check
+```
+
+- Trigger election status checks (used by the admin UI):
+
+```powershell
+python manage.py check_election_status
+```
+
+- Run tests:
+
+```powershell
+python manage.py test
+```
+
 ## Media and static files
 
-- During development (DEBUG=True) Django serves media files at `http://127.0.0.1:8000/media/`.
+- During development (`DEBUG=True`) Django serves media at `http://127.0.0.1:8000/media/`.
 - Configure `MEDIA_ROOT` and `MEDIA_URL` in `backend/voting_system/settings.py`.
 
-## Notable backend behaviors & developer notes
+## Notable backend behaviors
 
 - Incident assignment (`POST /api/incidents/assign/`):
-  - The endpoint is transactional (uses `select_for_update`) to avoid race conditions during assignment.
-  - If a non-admin attempts to claim an incident already assigned to someone else, the API returns 403 and includes `assigned_to_name` and `assigned_to_id` in the JSON response so clients can show a friendly message.
-  - Assigning an incident to the same official again is idempotent and returns success.
+  - The endpoint uses a DB transaction and `select_for_update` to avoid race conditions.
+  - If a non-admin tries to claim an incident already assigned, the API returns `403` and may include `assigned_to_name` and `assigned_to_id` for a friendly UI message.
+  - Re-assigning an incident to the same official is idempotent and returns success.
 
-- Incident creation accepts multipart/form-data and the serializer reads `request.FILES` when needed.
+- Incident statistics: `GET /api/incidents/stats/` returns aggregated incident counts for use in admin reports (admin/INEC-only access).
 
-- User roles are expressed via related profile models on the `User` model (e.g., `user.voter`, `user.inecofficial`, `user.admin`). Check `authentication/models.py` for the exact model shapes.
+- Voting statistics: `GET /api/voting/stats/` — voting totals and related metrics.
+
+- File uploads: endpoints that accept files (e.g., incident creation) expect `multipart/form-data`; serializers read `request.FILES`.
+
+## Model / role notes
+
+- The `User` model is extended with related profile models to represent roles: `user.voter`, `user.inecofficial`, `user.admin`. See `backend/authentication/models.py` for details.
 
 ## Troubleshooting
 
-- If migrations fail with locked DB errors, make sure no other manage.py process is running.
-- If media files do not appear, verify `DEBUG=True` and that `MEDIA_ROOT` points to the correct folder.
+- If migrations fail with DB lock errors, ensure no other Django processes are running.
+- If media files do not appear, confirm `DEBUG=True` and that `MEDIA_ROOT` is correct in settings.
 
-## Next improvements (backend)
+## Next improvements (suggestions)
 
-- Add unit tests covering assignment permission scenarios and transaction race conditions.
-- Add `assigned_at` to the incident model and serialization for better audit trails.
-- Add monitoring/alerts around long-running tasks and DB locks.
+- Add unit tests for assignment permission and transaction behavior.
+- Add an `assigned_at` timestamp to `IncidentReport` and surface it in the API and UI.
+- Provide a single admin analytics endpoint that aggregates election/voter/incident stats and returns one payload for the frontend.
+
+```

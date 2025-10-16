@@ -8,10 +8,23 @@ from django.db import transaction
 
 
 class UserSerializer(serializers.ModelSerializer):
+    age = serializers.SerializerMethodField(read_only=True)
     class Meta:
         model = User
-        fields = ['id', 'user_id', 'name', 'phone_number', 'email', 'dob', 'role', 'status', 'is_staff', 'is_superuser', 'created_at']
+        fields = ['id', 'user_id', 'name', 'phone_number', 'email', 'dob', 'age', 'role', 'status', 'is_staff', 'is_superuser', 'created_at']
         read_only_fields = ['id', 'user_id', 'created_at']
+
+    def get_age(self, obj):
+        """Compute age from dob, return None if dob not set"""
+        try:
+            dob = getattr(obj, 'dob', None)
+            if not dob:
+                return None
+            today = date.today()
+            age = today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))
+            return age
+        except Exception:
+            return None
 
 
 class VoterSerializer(serializers.ModelSerializer):
@@ -254,47 +267,47 @@ class PasswordChangeSerializer(serializers.Serializer):
             user.set_password(validated_data['new_password'])
         user.save()
         return user
-
-
-class PasswordResetRequestSerializer(serializers.Serializer):
-    phone_number = serializers.CharField(required=True)
-    
-    def validate_phone_number(self, value):
-        """Validate phone number exists in the system"""
-        # Clean phone number
-        phone_clean = str(value).replace(' ', '').replace('-', '')
-        
-        # Check if phone number exists
-        if not User._default_manager.filter(phone_number=phone_clean).exists():
-            raise serializers.ValidationError("No account found with this phone number.")
-        
-        return phone_clean
-
-
-class PasswordResetSerializer(serializers.Serializer):
-    phone_number = serializers.CharField(required=True)
-    new_password = serializers.CharField(required=True, min_length=8)
-    confirm_password = serializers.CharField(required=True)
-    
-    def validate(self, attrs):
-        if attrs['new_password'] != attrs['confirm_password']:
-            raise serializers.ValidationError("Passwords don't match.")
-        return attrs
-    
-    def save(self, **kwargs):
-        validated_data = getattr(self, 'validated_data', {})
-        if not validated_data or 'phone_number' not in validated_data:
-            raise serializers.ValidationError("Phone number is required.")
-            
-        phone_number = validated_data['phone_number']
-        # Clean phone number
-        phone_clean = str(phone_number).replace(' ', '').replace('-', '')
-        
-        try:
-            user = User._default_manager.get(phone_number=phone_clean)
-            if validated_data and 'new_password' in validated_data:
-                user.set_password(validated_data['new_password'])
-            user.save()
-            return user
-        except User._default_manager.model.DoesNotExist:
-            raise serializers.ValidationError("User not found.")
+# BEGIN BACKUP: Password reset serializers (disabled)
+# class PasswordResetRequestSerializer(serializers.Serializer):
+#     phone_number = serializers.CharField(required=True)
+#     
+#     def validate_phone_number(self, value):
+#         """Validate phone number exists in the system"""
+#         # Clean phone number
+#         phone_clean = str(value).replace(' ', '').replace('-', '')
+#         
+#         # Check if phone number exists
+#         if not User._default_manager.filter(phone_number=phone_clean).exists():
+#             raise serializers.ValidationError("No account found with this phone number.")
+#         
+#         return phone_clean
+#
+#
+# class PasswordResetSerializer(serializers.Serializer):
+#     phone_number = serializers.CharField(required=True)
+#     new_password = serializers.CharField(required=True, min_length=8)
+#     confirm_password = serializers.CharField(required=True)
+#     
+#     def validate(self, attrs):
+#         if attrs['new_password'] != attrs['confirm_password']:
+#             raise serializers.ValidationError("Passwords don't match.")
+#         return attrs
+#     
+#     def save(self, **kwargs):
+#         validated_data = getattr(self, 'validated_data', {})
+#         if not validated_data or 'phone_number' not in validated_data:
+#             raise serializers.ValidationError("Phone number is required.")
+#             
+#         phone_number = validated_data['phone_number']
+#         # Clean phone number
+#         phone_clean = str(phone_number).replace(' ', '').replace('-', '')
+#         
+#         try:
+#             user = User._default_manager.get(phone_number=phone_clean)
+#             if validated_data and 'new_password' in validated_data:
+#                 user.set_password(validated_data['new_password'])
+#             user.save()
+#             return user
+#         except User._default_manager.model.DoesNotExist:
+#             raise serializers.ValidationError("User not found.")
+# END BACKUP

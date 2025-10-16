@@ -122,7 +122,13 @@ def active_elections(request):
             # Guard against unexpected errors in status update
             continue
 
-    elections = Election._default_manager.filter(status='ongoing')
+    # Get elections that are ongoing and within the time window
+    now = timezone.now()
+    elections = Election._default_manager.filter(
+        status='ongoing',
+        start_date__lte=now,
+        end_date__gte=now
+    )
     serializer = ElectionSerializer(elections, many=True)
     return Response(serializer.data)
 
