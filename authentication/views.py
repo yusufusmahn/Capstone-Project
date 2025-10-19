@@ -20,19 +20,19 @@ class RegisterView(APIView):
     permission_classes = [permissions.AllowAny]
     
     def post(self, request):
-        print(f"🔍 Registration request received: {request.data}")
+        print(f"Registration request received: {request.data}")
         
         serializer = RegistrationSerializer(data=request.data)
-        print(f"🔍 Serializer created: {serializer}")
+        print(f"Serializer created: {serializer}")
         
         if serializer.is_valid():
-            print("✅ Serializer is valid, creating user...")
+            print("Serializer is valid, creating user...")
             try:
                 user = serializer.save()
-                print(f"✅ User created: {user}")
+                print(f"User created: {user}")
                 
                 token, created = Token.objects.get_or_create(user=user)
-                print(f"✅ Token created: {token.key[:10]}...")
+                print(f"Token created: {token.key[:10]}...")
                 
                 # Get voter profile for response
                 voter_profile = None
@@ -40,7 +40,7 @@ class RegisterView(APIView):
                     voter_attr = getattr(user, 'voter', None)
                     if voter_attr is not None:
                         voter_profile = VoterSerializer(voter_attr).data
-                    print(f"✅ Voter profile: {voter_profile}")
+                    print(f"Voter profile: {voter_profile}")
                 
                 response_data = {
                     'user': UserSerializer(user).data,
@@ -49,22 +49,22 @@ class RegisterView(APIView):
                     'message': 'Registration successful! Your account is pending INEC verification.',
                     'status': 'pending_verification'
                 }
-                print(f"✅ Sending response: {response_data}")
+                print(f"Sending response: {response_data}")
                 
                 return Response(response_data, status=status.HTTP_201_CREATED)
                 
             except Exception as e:
-                print(f"❌ Error during user creation: {e}")
-                print(f"❌ Error type: {type(e)}")
+                print(f"Error during user creation: {e}")
+                print(f"Error type: {type(e)}")
                 import traceback
-                print(f"❌ Traceback: {traceback.format_exc()}")
+                print(f"Traceback: {traceback.format_exc()}")
                 
                 return Response({
                     'error': 'Registration failed during user creation',
                     'details': str(e)
                 }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         else:
-            print(f"❌ Serializer validation failed: {serializer.errors}")
+            print(f"Serializer validation failed: {serializer.errors}")
             return Response({
                 'error': 'Registration failed',
                 'details': serializer.errors
@@ -185,47 +185,7 @@ class PasswordChangeView(APIView):
                 'error': 'Password change failed',
                 'details': serializer.errors
             }, status=status.HTTP_400_BAD_REQUEST)
-"""
-class PasswordResetRequestView(APIView):
-    permission_classes = [permissions.AllowAny]
-    
-    def post(self, request):
-        serializer = PasswordResetRequestSerializer(data=request.data)
-        if serializer.is_valid():
-            # In a real implementation, you would send an SMS or email with a reset token
-            # For now, we'll just return a success message
-            return Response({
-                'message': 'Password reset instructions have been sent to your phone number.'
-            }, status=status.HTTP_200_OK)
-        else:
-            return Response({
-                'error': 'Failed to process password reset request',
-                'details': serializer.errors
-            }, status=status.HTTP_400_BAD_REQUEST)
 
-
-class PasswordResetView(APIView):
-    permission_classes = [permissions.AllowAny]
-    
-    def post(self, request):
-        serializer = PasswordResetSerializer(data=request.data)
-        if serializer.is_valid():
-            try:
-                user = serializer.save()
-                return Response({
-                    'message': 'Password has been reset successfully. You can now login with your new password.'
-                }, status=status.HTTP_200_OK)
-            except Exception as e:
-                return Response({
-                    'error': 'Failed to reset password',
-                    'details': str(e)
-                }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        else:
-            return Response({
-                'error': 'Password reset failed',
-                'details': serializer.errors
-            }, status=status.HTTP_400_BAD_REQUEST)
-"""
 
 
 @api_view(['GET'])

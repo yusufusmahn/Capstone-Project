@@ -10,9 +10,6 @@ urlpatterns = [
     path('logout/', views.LogoutView.as_view(), name='logout'),
     path('profile/', views.ProfileView.as_view(), name='profile'),
     path('change-password/', views.PasswordChangeView.as_view(), name='change_password'),
-    # Password reset endpoints are disabled/removed for now
-    # path('reset-password-request/', views.PasswordResetRequestView.as_view(), name='password_reset_request'),
-    # path('reset-password/', views.PasswordResetView.as_view(), name='password_reset'),
     
     # User management (Admin only)
     path('users/', views.user_list, name='user_list'),

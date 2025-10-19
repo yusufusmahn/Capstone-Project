@@ -199,7 +199,7 @@ if os.getenv('CREATE_SUPERUSER', 'False').lower() == 'true':
     admin_password = os.getenv('ADMIN_PASSWORD')
 
     if not admin_phone or not admin_password:
-        print("⚠️ ADMIN_PHONE or ADMIN_PASSWORD not set — skipping superuser creation.")
+        print("ADMIN_PHONE or ADMIN_PASSWORD not set — skipping superuser creation.")
     else:
         if not User.objects.filter(phone_number=admin_phone).exists():
             admin_user = User.objects.create_superuser(
@@ -207,7 +207,7 @@ if os.getenv('CREATE_SUPERUSER', 'False').lower() == 'true':
                 phone_number=admin_phone,
                 password=admin_password,
             )
-            print(f"✅ Superuser created: {admin_phone}")
+            print(f"Superuser created: {admin_phone}")
 
             # Optional: create voter profile for consistency
             Voter.objects.get_or_create(
@@ -218,6 +218,6 @@ if os.getenv('CREATE_SUPERUSER', 'False').lower() == 'true':
                     'can_vote': False,
                 },
             )
-            print("🧾 Linked VoterProfile created for superuser.")
+            print("Linked VoterProfile created for superuser.")
         else:
-            print(f"ℹ️ Superuser already exists: {admin_phone}")
+            print(f"ℹSuperuser already exists: {admin_phone}")

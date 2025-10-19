@@ -15,17 +15,13 @@ class PhoneNumberBackend(ModelBackend):
             return None
         
         try:
-            # Find user by phone number
             user = User.objects.get(
                 Q(phone_number=phone_number) | Q(phone_number=phone_number.strip())
             )
         except User.DoesNotExist:
-            # Run the default password hasher once to reduce the timing
-            # difference between an existing and a nonexistent user
             User().set_password(password)
             return None
         
-        # Check password
         if user.check_password(password) and self.user_can_authenticate(user):
             return user
         
