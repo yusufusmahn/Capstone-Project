@@ -79,7 +79,7 @@ def election_results(request, election_id):
             'error': 'Election results are only available for completed elections'
         }, status=status.HTTP_400_BAD_REQUEST)
     
-    serializer = ElectionResultsSerializer(election)
+    serializer = ElectionResultsSerializer(election, context={'request': request})
     return Response(serializer.data)
 
 
@@ -129,7 +129,7 @@ def active_elections(request):
         start_date__lte=now,
         end_date__gte=now
     )
-    serializer = ElectionSerializer(elections, many=True)
+    serializer = ElectionSerializer(elections, many=True, context={'request': request})
     return Response(serializer.data)
 
 

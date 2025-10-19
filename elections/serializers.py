@@ -6,6 +6,8 @@ from authentication.models import Voter
 
 class CandidateSerializer(serializers.ModelSerializer):
     vote_count = serializers.SerializerMethodField()
+    # Return an absolute URL for the photo when possible
+    photo = serializers.SerializerMethodField()
     
     class Meta:
         model = Candidate
@@ -14,6 +16,26 @@ class CandidateSerializer(serializers.ModelSerializer):
     
     def get_vote_count(self, obj):
         return obj.get_vote_count()
+
+    def get_photo(self, obj):
+        # Try to return an absolute URL using request context if available
+        photo_url = None
+        if obj.photo:
+            try:
+                photo_url = getattr(obj.photo, 'url', None)
+            except Exception:
+                photo_url = None
+
+        request = self.context.get('request') if hasattr(self, 'context') else None
+        if photo_url:
+            if request is not None:
+                try:
+                    return request.build_absolute_uri(photo_url)
+                except Exception:
+                    return photo_url
+            return photo_url
+
+        return None
 
 
 class ElectionSerializer(serializers.ModelSerializer):

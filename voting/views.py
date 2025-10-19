@@ -88,7 +88,7 @@ def get_ballot(request, election_id):
     
     try:
         ballot = election.ballot
-        serializer = BallotSerializer(ballot)
+        serializer = BallotSerializer(ballot, context={'request': request})
         return Response(serializer.data)
     except Exception:
         # Create ballot if it doesn't exist
@@ -96,8 +96,8 @@ def get_ballot(request, election_id):
         # Add all candidates to ballot
         for i, candidate in enumerate(election.candidates.all(), 1):
             ballot.ballotcandidate_set.create(candidate=candidate, order=i)
-        
-        serializer = BallotSerializer(ballot)
+
+        serializer = BallotSerializer(ballot, context={'request': request})
         return Response(serializer.data)
 
 

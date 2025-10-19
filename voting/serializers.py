@@ -112,7 +112,8 @@ class BallotSerializer(serializers.ModelSerializer):
     
     def get_candidates(self, obj):
         ballot_candidates = obj.get_candidate_list()
-        return BallotCandidateSerializer(ballot_candidates, many=True).data
+        # Pass context through so nested CandidateSerializer can access request for absolute URLs
+        return BallotCandidateSerializer(ballot_candidates, many=True, context=self.context).data
     
     def get_election_title(self, obj):
         return obj.election.title
